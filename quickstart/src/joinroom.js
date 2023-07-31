@@ -1,13 +1,17 @@
-'use strict';
+"use strict";
 
-const { connect, createLocalVideoTrack, Logger } = require('twilio-video');
-const { isMobile } = require('./browser');
+const { connect, createLocalVideoTrack, Logger } = require("twilio-video");
+const { isMobile } = require("./browser");
+const Video = require("twilio-video");
 
-const $leave = $('#leave-room');
-const $room = $('#room');
-const $activeParticipant = $('div#active-participant > div.participant.main', $room);
-const $activeVideo = $('video', $activeParticipant);
-const $participants = $('div#participants', $room);
+const $leave = $("#leave-room");
+const $room = $("#room");
+const $activeParticipant = $(
+  "div#active-participant > div.participant.main",
+  $room
+);
+const $activeVideo = $("video", $activeParticipant);
+const $participants = $("div#participants", $room);
 
 // The current active Participant in the Room.
 let activeParticipant = null;
@@ -15,6 +19,34 @@ let activeParticipant = null;
 // Whether the user has selected the active Participant by clicking on
 // one of the video thumbnails.
 let isActiveParticipantPinned = false;
+let screenTrack;
+
+var screenShareBtn = document.getElementById("screenShare");
+screenShareBtn.onclick = function () {
+  if (!screenTrack) {
+    navigator.mediaDevices
+      .getDisplayMedia()
+      .then((stream) => {
+        screenTrack = new Video.LocalVideoTrack(stream.getTracks()[0], {
+          name: "screen",
+        });
+        room.localParticipant.publishTrack(screenTrack);
+        screenShareBtn.innerHTML = "Stop sharing";
+        screenTrack.mediaStreamTrack.onended = () => {
+          shareScreenHandler();
+        };
+      })
+      .catch((error) => {
+        console.log(error);
+        alert("Could not share the screen." + error);
+      });
+  } else {
+    room.localParticipant.unpublishTrack(screenTrack);
+    screenTrack.stop();
+    screenTrack = null;
+    screenShareBtn.innerHTML = "Share screen";
+  }
+};
 
 /**
  * Set the active Participant's video.
@@ -23,14 +55,15 @@ let isActiveParticipantPinned = false;
 function setActiveParticipant(participant) {
   if (activeParticipant) {
     const $activeParticipant = $(`div#${activeParticipant.sid}`, $participants);
-    $activeParticipant.removeClass('active');
-    $activeParticipant.removeClass('pinned');
+    $activeParticipant.removeClass("active");
+    $activeParticipant.removeClass("pinned");
 
     // Detach any existing VideoTrack of the active Participant.
-    const { track: activeTrack } = Array.from(activeParticipant.videoTracks.values())[0] || {};
+    const { track: activeTrack } =
+      Array.from(activeParticipant.videoTracks.values())[0] || {};
     if (activeTrack) {
       activeTrack.detach($activeVideo.get(0));
-      $activeVideo.css('opacity', '0');
+      $activeVideo.css("opacity", "0");
     }
   }
 
@@ -39,20 +72,20 @@ function setActiveParticipant(participant) {
   const { identity, sid } = participant;
   const $participant = $(`div#${sid}`, $participants);
 
-  $participant.addClass('active');
+  $participant.addClass("active");
   if (isActiveParticipantPinned) {
-    $participant.addClass('pinned');
+    $participant.addClass("pinned");
   }
 
   // Attach the new active Participant's video.
   const { track } = Array.from(participant.videoTracks.values())[0] || {};
   if (track) {
     track.attach($activeVideo.get(0));
-    $activeVideo.css('opacity', '');
+    $activeVideo.css("opacity", "");
   }
 
   // Set the new active Participant's identity
-  $activeParticipant.attr('data-identity', identity);
+  $activeParticipant.attr("data-identity", identity);
 }
 
 /**
@@ -73,13 +106,16 @@ function setupParticipantContainer(participant, room) {
   const { identity, sid } = participant;
 
   // Add a container for the Participant's media.
-  const $container = $(`<div class="participant" data-identity="${identity}" id="${sid}">
-    <audio autoplay ${participant === room.localParticipant ? 'muted' : ''} style="opacity: 0"></audio>
+  const $container =
+    $(`<div class="participant" data-identity="${identity}" id="${sid}">
+    <audio autoplay ${
+      participant === room.localParticipant ? "muted" : ""
+    } style="opacity: 0"></audio>
     <video autoplay muted playsinline style="opacity: 0"></video>
   </div>`);
 
   // Toggle the pinning of the active Participant's video.
-  $container.on('click', () => {
+  $container.on("click", () => {
     if (activeParticipant === participant && isActiveParticipantPinned) {
       // Unpin the RemoteParticipant and update the current active Participant.
       setVideoPriority(participant, null);
@@ -90,7 +126,7 @@ function setupParticipantContainer(participant, room) {
       if (isActiveParticipantPinned) {
         setVideoPriority(activeParticipant, null);
       }
-      setVideoPriority(participant, 'high');
+      setVideoPriority(participant, "high");
       isActiveParticipantPinned = true;
       setActiveParticipant(participant);
     }
@@ -107,7 +143,7 @@ function setupParticipantContainer(participant, room) {
  * @param priority - null | 'low' | 'standard' | 'high'
  */
 function setVideoPriority(participant, priority) {
-  participant.videoTracks.forEach(publication => {
+  participant.videoTracks.forEach((publication) => {
     const track = publication.track;
     if (track && track.setPriority) {
       track.setPriority(priority);
@@ -123,14 +159,14 @@ function setVideoPriority(participant, priority) {
 function attachTrack(track, participant) {
   // Attach the Participant's Track to the thumbnail.
   const $media = $(`div#${participant.sid} > ${track.kind}`, $participants);
-  $media.css('opacity', '');
+  $media.css("opacity", "");
   track.attach($media.get(0));
 
   // If the attached Track is a VideoTrack that is published by the active
   // Participant, then attach it to the main video as well.
-  if (track.kind === 'video' && participant === activeParticipant) {
+  if (track.kind === "video" && participant === activeParticipant) {
     track.attach($activeVideo.get(0));
-    $activeVideo.css('opacity', '');
+    $activeVideo.css("opacity", "");
   }
 }
 
@@ -143,17 +179,17 @@ function detachTrack(track, participant) {
   // Detach the Participant's Track from the thumbnail.
   const $media = $(`div#${participant.sid} > ${track.kind}`, $participants);
   const mediaEl = $media.get(0);
-  $media.css('opacity', '0');
+  $media.css("opacity", "0");
   track.detach(mediaEl);
   mediaEl.srcObject = null;
 
   // If the detached Track is a VideoTrack that is published by the active
   // Participant, then detach it from the main video as well.
-  if (track.kind === 'video' && participant === activeParticipant) {
+  if (track.kind === "video" && participant === activeParticipant) {
     const activeVideoEl = $activeVideo.get(0);
     track.detach(activeVideoEl);
     activeVideoEl.srcObject = null;
-    $activeVideo.css('opacity', '0');
+    $activeVideo.css("opacity", "0");
   }
 }
 
@@ -167,12 +203,12 @@ function participantConnected(participant, room) {
   setupParticipantContainer(participant, room);
 
   // Handle the TrackPublications already published by the Participant.
-  participant.tracks.forEach(publication => {
+  participant.tracks.forEach((publication) => {
     trackPublished(publication, participant);
   });
 
   // Handle theTrackPublications that will be published by the Participant later.
-  participant.on('trackPublished', publication => {
+  participant.on("trackPublished", (publication) => {
     trackPublished(publication, participant);
   });
 }
@@ -206,12 +242,12 @@ function trackPublished(publication, participant) {
   }
 
   // Once the TrackPublication is subscribed to, attach the Track to the DOM.
-  publication.on('subscribed', track => {
+  publication.on("subscribed", (track) => {
     attachTrack(track, participant);
   });
 
   // Once the TrackPublication is unsubscribed from, detach the Track from the DOM.
-  publication.on('unsubscribed', track => {
+  publication.on("unsubscribed", (track) => {
     detachTrack(track, participant);
   });
 }
@@ -223,14 +259,16 @@ function trackPublished(publication, participant) {
  */
 async function joinRoom(token, connectOptions) {
   // Comment the next two lines to disable verbose logging.
-  const logger = Logger.getLogger('twilio-video');
-  logger.setLevel('debug');
+  const logger = Logger.getLogger("twilio-video");
+  logger.setLevel("debug");
 
   // Join to the Room with the given AccessToken and ConnectOptions.
   const room = await connect(token, connectOptions);
 
   // Save the LocalVideoTrack.
-  let localVideoTrack = Array.from(room.localParticipant.videoTracks.values())[0].track;
+  let localVideoTrack = Array.from(
+    room.localParticipant.videoTracks.values()
+  )[0].track;
 
   // Make the Room available in the JavaScript console for debugging.
   window.room = room;
@@ -239,17 +277,17 @@ async function joinRoom(token, connectOptions) {
   participantConnected(room.localParticipant, room);
 
   // Subscribe to the media published by RemoteParticipants already in the Room.
-  room.participants.forEach(participant => {
+  room.participants.forEach((participant) => {
     participantConnected(participant, room);
   });
 
   // Subscribe to the media published by RemoteParticipants joining the Room later.
-  room.on('participantConnected', participant => {
+  room.on("participantConnected", (participant) => {
     participantConnected(participant, room);
   });
 
   // Handle a disconnected RemoteParticipant.
-  room.on('participantDisconnected', participant => {
+  room.on("participantDisconnected", (participant) => {
     participantDisconnected(participant, room);
   });
 
@@ -258,7 +296,7 @@ async function joinRoom(token, connectOptions) {
 
   // Update the active Participant when changed, only if the user has not
   // pinned any particular Participant as the active Participant.
-  room.on('dominantSpeakerChanged', () => {
+  room.on("dominantSpeakerChanged", () => {
     if (!isActiveParticipantPinned) {
       setCurrentActiveParticipant(room);
     }
@@ -266,7 +304,7 @@ async function joinRoom(token, connectOptions) {
 
   // Leave the Room when the "Leave Room" button is clicked.
   $leave.click(function onLeave() {
-    $leave.off('click', onLeave);
+    $leave.off("click", onLeave);
     room.disconnect();
   });
 
@@ -286,7 +324,7 @@ async function joinRoom(token, connectOptions) {
       // On mobile browsers, use "visibilitychange" event to determine when
       // the app is backgrounded or foregrounded.
       document.onvisibilitychange = async () => {
-        if (document.visibilityState === 'hidden') {
+        if (document.visibilityState === "hidden") {
           // When the app is backgrounded, your app can no longer capture
           // video frames. So, stop and unpublish the LocalVideoTrack.
           localVideoTrack.stop();
@@ -300,7 +338,7 @@ async function joinRoom(token, connectOptions) {
       };
     }
 
-    room.once('disconnected', (room, error) => {
+    room.once("disconnected", (room, error) => {
       // Clear the event handlers on document and window..
       window.onbeforeunload = null;
       if (isMobile) {
@@ -315,7 +353,7 @@ async function joinRoom(token, connectOptions) {
       participantDisconnected(room.localParticipant, room);
 
       // Handle the disconnected RemoteParticipants.
-      room.participants.forEach(participant => {
+      room.participants.forEach((participant) => {
         participantDisconnected(participant, room);
       });
 
