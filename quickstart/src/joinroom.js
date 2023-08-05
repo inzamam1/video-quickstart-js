@@ -21,6 +21,7 @@ let activeParticipant = null;
 let isActiveParticipantPinned = false;
 let screenTrack;
 
+// Sharing screen
 var screenShareBtn = document.getElementById("screenShare");
 screenShareBtn.onclick = function () {
   if (!screenTrack) {
