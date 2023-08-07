@@ -1,22 +1,43 @@
-room = window.room;
+"use strict";
 
-let screenTrack;
+function muteOrUnmuteYourMedia(room, kind, action) {
+  console.log("Local Media control Event: ", kind, action);
+  if (kind === "data") return;
+  const publications =
+    kind === "audio"
+      ? room.localParticipant.audioTracks
+      : room.localParticipant.videoTracks;
 
-function screenshare() {
-  navigator.mediaDevices
-    .getDisplayMedia()
-    .then((stream) => {
-      screenTrack = new Twilio.Video.LocalVideoTrack(
-        stream.getVideoTracks()[0],
-        {
-          name: "screen",
-        }
-      );
-      room.localParticipant.publishTrack(screenTrack);
-    })
-    .catch((error) => {
-      console.log(error);
-      alert("Could not share the screen." + error);
-    });
-  console.log("sharing screen");
+  publications.forEach(function (publication) {
+    if (action === "mute") {
+      publication.track.disable();
+    } else {
+      publication.track.enable();
+    }
+  });
 }
+
+function muteYourVideo(room, muteVideoBtn) {
+  muteVideoBtn.classList.add("muted");
+  muteOrUnmuteYourMedia(room, "video", "mute");
+}
+
+function unmuteYourVideo(room, muteVideoBtn) {
+  muteVideoBtn.classList.remove("muted");
+  muteOrUnmuteYourMedia(room, "video", "unmute");
+}
+
+function muteYourAudio(room, muteAudioBtn) {
+  muteAudioBtn.classList.add("muted");
+  muteOrUnmuteYourMedia(room, "audio", "mute");
+}
+
+function unmuteYourAudio(room, muteAudioBtn) {
+  muteAudioBtn.classList.remove("muted");
+  muteOrUnmuteYourMedia(room, "audio", "unmute");
+}
+
+exports.muteYourVideo = muteYourVideo;
+exports.unmuteYourVideo = unmuteYourVideo;
+exports.muteYourAudio = muteYourAudio;
+exports.unmuteYourAudio = unmuteYourAudio;

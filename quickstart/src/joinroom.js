@@ -12,6 +12,12 @@ const $activeParticipant = $(
 );
 const $activeVideo = $("video", $activeParticipant);
 const $participants = $("div#participants", $room);
+const {
+  muteYourAudio,
+  unmuteYourAudio,
+  muteYourVideo,
+  unmuteYourVideo,
+} = require("/Users/isayyed/Documents/video/video-quickstart-js/quickstart/public/10");
 
 // The current active Participant in the Room.
 let activeParticipant = null;
@@ -48,6 +54,36 @@ screenShareBtn.onclick = function () {
     screenShareBtn.innerHTML = "Share screen";
   }
 };
+//--------------------------------------------------
+
+//Mute audio, video.
+
+var muteAudioBtn = document.querySelector("button#muteAudio");
+var muteVideoBtn = document.querySelector("button#muteVideo");
+
+muteAudioBtn.onclick = () => {
+  const mute = !muteAudioBtn.classList.contains("muted");
+  if (mute) {
+    muteYourAudio(room, muteAudioBtn);
+    muteAudioBtn.innerText = "Enable Audio";
+  } else {
+    unmuteYourAudio(room, muteAudioBtn);
+    muteAudioBtn.innerText = "Disable Audio";
+  }
+};
+
+muteVideoBtn.onclick = () => {
+  const mute = !muteVideoBtn.classList.contains("muted");
+  if (mute) {
+    muteYourVideo(room, muteVideoBtn);
+    muteVideoBtn.innerText = "Enable Video";
+  } else {
+    unmuteYourVideo(room, muteVideoBtn);
+    muteVideoBtn.innerText = "Disable Video";
+  }
+};
+
+//----------------------------
 
 /**
  * Set the active Participant's video.
